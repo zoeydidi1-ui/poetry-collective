@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Poetry Collective</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Rozha+One&family=Teko:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-dark: #1a1410;
+            --secondary-dark: #2d2419;
+            --accent-warm: #d4a574;
+            --accent-gold: #c9a961;
+            --text-primary: #f4f1eb;
+            --text-secondary: #c9c3b8;
+            --background: #0f0d0a;
+            --card-bg: rgba(45, 36, 25, 0.6);
+            --border-subtle: rgba(212, 165, 116, 0.2);
+            --danger: #e63946;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        /* UI Selection Prevention */
+        nav, .hero, .section-title, .btn-primary, .snap-btn, .share-btn, .poet-card, .poem-card h3, .poem-card .poem-author, footer, .modal-title, label, .lang-btn, .edit-btn, .delete-btn {
+            user-select: none; -webkit-user-select: none;
+        }
+
+        html, body {
+            height: 100%;
+            background-color: var(--background) !important; /* Force Dark Background */
+        }
+
+        body {
+            font-family: 'Crimson Pro', serif;
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            transition: background 1s ease;
+        }
+
+        /* --- SCROLLBAR LOCK --- */
+        body.modal-open {
+            overflow: hidden !important; /* Disables main scrollbar */
+            padding-right: 15px; /* Prevent layout shift if scrollbar disappears */
+        }
+
+        /* Focus outlines */
+        a:focus, button:focus, input:focus, textarea:focus { outline: 1px dashed var(--accent-warm); outline-offset: 2px; }
+
+        /* Languages */
+        body.lang-np { font-family: 'Teko', sans-serif; font-size: 1.1rem; }
+        body.lang-np h1, body.lang-np h2, body.lang-np h3, body.lang-np .logo, body.lang-np .nav-links a { font-family: 'Rozha One', serif; }
+        .poem-content-text { font-family: 'EB Garamond', serif; }
+        .nepali-text { font-family: 'Teko', sans-serif !important; font-size: 1.3em; line-height: 1.6; }
+        .nepali-heading { font-family: 'Rozha One', serif !important; line-height: 1.4; }
+
+        .background-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.4; transition: opacity 1s ease; pointer-events: none; }
+        .content-wrapper { position: relative; z-index: 1; }
+
+        /* Navigation */
+        nav {
+            position: fixed; top: 0; width: 100%; padding: 1.5rem 3rem; display: flex; justify-content: space-between; align-items: center;
+            background: rgba(15, 13, 10, 0.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-subtle); z-index: 100; animation: slideDown 0.8s ease-out;
+        }
+        @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .logo { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 600; font-style: italic; color: var(--accent-gold); letter-spacing: 2px; cursor: pointer; }
+        .nav-links { display: flex; gap: 2rem; align-items: center; }
+        .nav-links a, .nav-links button { color: var(--text-secondary); text-decoration: none; font-size: 1rem; transition: all 0.3s ease; background: none; border: none; cursor: pointer; font-family: 'Crimson Pro', serif; position: relative; padding: 5px 0; }
+        
+        /* Updated Hover Effects to include Submit Button */
+        .nav-links a::after, #submitBtn::after { content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 2px; background: var(--accent-warm); transition: width 0.3s ease; }
+        .nav-links a:hover::after, #submitBtn:hover::after { width: 100%; }
+        .nav-links a:hover, #submitBtn:hover { color: var(--accent-warm); }
+        .nav-links a.active { color: var(--accent-gold); font-weight: 600; }
+        .nav-links a.active::after { width: 100%; background: var(--accent-gold); box-shadow: 0 0 8px var(--accent-gold); }
+
+        /* Special Buttons */
+        #surpriseBtn { color: var(--accent-gold); border: 1px solid var(--accent-gold); padding: 0.2rem 0.8rem; border-radius: 20px; transition: 0.3s; }
+        #surpriseBtn:hover { background: var(--accent-gold); color: var(--primary-dark); box-shadow: 0 0 10px var(--accent-gold); }
+        
+        /* Submit Button Styling Reset (To look like a link) */
+        #submitBtn { 
+            color: var(--text-secondary);
+            background: none;
+            border: none;
+            padding: 5px 0;
+            border-radius: 0;
+            font-family: 'Crimson Pro', serif;
+            font-size: 1rem;
+        }
+
+        .lang-btn { border: 1px solid var(--border-subtle) !important; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 1.2rem !important; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-warm), var(--accent-gold)); color: var(--primary-dark); padding: 0.6rem 1.5rem; border-radius: 2px; border: none; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-family: 'Crimson Pro', serif;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(212, 165, 116, 0.3); }
+        .btn-secondary {
+            background: transparent; border: 1px solid var(--accent-warm); color: var(--accent-warm); padding: 0.6rem 1.5rem; border-radius: 2px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-family: 'Crimson Pro', serif; margin-top: 1rem;
+        }
+        .btn-secondary:hover { background: rgba(212, 165, 116, 0.1); color: var(--accent-gold); border-color: var(--accent-gold); }
+
+        /* Hero */
+        .hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 8rem 2rem 4rem; position: relative; }
+        .hero-content { max-width: 900px; animation: fadeInUp 1s ease-out 0.3s both; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+        .hero h1 { font-family: 'Cormorant Garamond', serif; font-size: 5rem; font-weight: 600; font-style: italic; margin-bottom: 1.5rem; color: var(--accent-gold); letter-spacing: 3px; line-height: 1.2; }
+        .hero-subtitle { font-size: 1.4rem; color: var(--text-secondary); margin-bottom: 2rem; font-style: italic; animation: fadeInUp 1s ease-out 0.6s both; }
+        .hero-actions { display: flex; gap: 1.5rem; justify-content: center; margin-top: 3rem; animation: fadeInUp 1s ease-out 0.9s both; flex-wrap: wrap; }
+
+        /* Main Content */
+        .container { max-width: 1400px; margin: 0 auto; padding: 6rem 2rem 4rem; }
+        .section-title { font-family: 'Cormorant Garamond', serif; font-size: 3rem; font-weight: 600; color: var(--accent-gold); margin-bottom: 3rem; text-align: center; font-style: italic; }
+
+        /* Grids */
+        .poems-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 2rem; margin-bottom: 4rem; }
+        .poem-card { background: var(--card-bg); backdrop-filter: blur(10px); border: 1px solid var(--border-subtle); border-radius: 4px; transition: all 0.4s ease; cursor: pointer; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+        .poem-cover-img { width: 100%; height: 180px; object-fit: cover; border-bottom: 1px solid var(--border-subtle); opacity: 0.8; transition: opacity 0.4s ease; }
+        .poem-card:hover .poem-cover-img { opacity: 1; }
+        .poem-card-content { padding: 2rem; flex-grow: 1; display: flex; flex-direction: column; }
+        .poem-card:hover { transform: translateY(-8px); border-color: var(--accent-warm); box-shadow: 0 12px 40px rgba(212, 165, 116, 0.2); }
+        .poem-title { font-family: 'EB Garamond', serif; font-size: 1.8rem; font-weight: 600; color: var(--accent-warm); margin-bottom: 0.5rem; }
+        .poem-author { font-size: 1rem; color: var(--text-secondary); margin-bottom: 1rem; font-style: italic; }
+        .poem-excerpt { font-family: 'EB Garamond', serif; font-size: 1.1rem; line-height: 1.9; color: var(--text-primary); font-style: italic; margin-bottom: 1rem; flex-grow: 1; }
+        .poem-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: var(--text-secondary); margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle); }
+
+        /* Actions */
+        .action-btn-group { display: flex; gap: 1rem; justify-content: center; margin: 2rem 0; flex-wrap: wrap; }
+        .snap-btn, .share-btn { background: none; border: 1px solid var(--border-subtle); color: var(--text-secondary); padding: 0.5rem 1.2rem; border-radius: 20px; font-size: 1rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.3s ease; }
+        .snap-btn:hover, .share-btn:hover { border-color: var(--accent-gold); color: var(--accent-gold); background: rgba(201, 169, 97, 0.05); }
+
+        .mood-tag { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; padding: 0.2rem 0.6rem; border-radius: 2px; background: rgba(255,255,255,0.05); margin-bottom: 0.5rem; display: inline-block; align-self: flex-start; }
+
+        .poets-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 3rem; margin-bottom: 4rem; }
+        .poet-card { background: rgba(20, 20, 20, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); transition: all 0.4s ease; cursor: pointer; position: relative; overflow: hidden; opacity: 0; animation: slideUp 0.8s ease forwards; }
+        .poet-card:nth-child(1) { animation-delay: 0.1s; } .poet-card:nth-child(2) { animation-delay: 0.2s; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .poet-card:hover { transform: translateY(-8px); border-color: var(--accent-gold); background: rgba(0, 0, 0, 0.9); }
+        .poet-img-box { height: 380px; width: 100%; overflow: hidden; filter: sepia(20%); }
+        .poet-img { width: 100%; height: 100%; object-fit: cover; transition: all 0.5s ease; filter: grayscale(100%); }
+        .poet-card:hover .poet-img { transform: scale(1.1); filter: grayscale(0%); }
+        .poet-info { padding: 2rem; text-align: center; }
+        .poet-name { font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 600; color: var(--text-primary); margin-bottom: 1rem; line-height: 1; }
+        
+        /* Lists */
+        .poet-poem-list-item { display: flex; align-items: baseline; gap: 1.5rem; padding: 1.5rem; border-bottom: 1px solid var(--border-subtle); cursor: pointer; transition: all 0.3s ease; }
+        .poet-poem-list-item:hover { background: rgba(255, 255, 255, 0.05); padding-left: 2rem; }
+        .stylish-number { font-family: 'Rozha One', serif; font-size: 3rem; color: var(--accent-gold); opacity: 0.5; line-height: 1; min-width: 60px; }
+
+        /* Modals */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center; padding: 2rem; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--secondary-dark); border: 1px solid var(--accent-warm); border-radius: 4px; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 3rem; position: relative; animation: slideInUp 0.4s ease; }
+        @keyframes slideInUp { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-close { position: absolute; top: 1.5rem; right: 1.5rem; background: none; border: none; color: var(--text-secondary); font-size: 2rem; cursor: pointer; transition: color 0.3s ease; }
+        .modal-close:hover { color: var(--accent-warm); }
+
+        /* Capture Area for Image Share */
+        #poem-capture-area { padding: 2rem; background: var(--secondary-dark); border-radius: 4px; }
+
+        .poem-full { font-family: 'EB Garamond', serif; font-size: 1.3rem; line-height: 2; white-space: pre-wrap; margin: 2rem 0; font-style: italic; }
+        .audio-player-container { margin: 2rem 0; padding: 1rem; border: 1px solid var(--border-subtle); border-radius: 4px; background: rgba(0,0,0,0.2); }
+        audio { width: 100%; height: 40px; filter: sepia(100%) saturate(400%) grayscale(0%) contrast(90%); }
+
+        footer { background: var(--secondary-dark); border-top: 1px solid var(--border-subtle); padding: 3rem 2rem; text-align: center; color: var(--text-secondary); }
+        .click-burst { position: fixed; pointer-events: none; z-index: 999; }
+        .toast { visibility: hidden; min-width: 250px; background-color: var(--accent-gold); color: var(--primary-dark); text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 1100; left: 50%; bottom: 30px; transform: translateX(-50%); font-family: 'Crimson Pro', serif; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+        .toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+
+        @media (max-width: 768px) {
+            nav { padding: 1rem 1.5rem; flex-wrap: wrap; gap: 1rem; }
+            .logo { font-size: 1.5rem; }
+            .nav-links { gap: 0.8rem; font-size: 0.85rem; flex-wrap: wrap; }
+            .hero h1 { font-size: 2.5rem; }
+            .poems-grid { grid-template-columns: 1fr; }
+            .stylish-number { font-size: 2rem; min-width: 40px; }
+        }
+    </style>
+</head>
+<body class="lang-en">
+    <canvas class="background-canvas" id="canvas"></canvas>
+    <div class="content-wrapper">
+        <nav>
+            <div class="logo" data-i18n="logo" onclick="window.scrollTo(0,0)">The Poetry Collective</div>
+            <div class="nav-links">
+                <a href="#poems" id="nav-poems" data-i18n="nav_poems">Poems</a>
+                <a href="#poets" id="nav-poets" data-i18n="nav_poets">Poets</a>
+                <button id="submitBtn" onclick="openModal('submitModal')" data-i18n="nav_submit">Submit Poem</button>
+                <button id="surpriseBtn" onclick="surpriseMe()"><i class="fas fa-magic"></i> <span data-i18n="nav_surprise">Surprise Me</span></button>
+                <button class="lang-btn" onclick="toggleLanguage()" title="Switch Language"><span id="langFlag">🇳🇵</span></button>
+            </div>
+        </nav>
+
+        <section class="hero" id="home">
+            <div class="hero-content">
+                <h1 data-i18n="hero_title">Where Words Find Wings</h1>
+                <p class="hero-subtitle" data-i18n="hero_subtitle">A sanctuary for poets to share, discover, and celebrate the art of verse</p>
+                <div class="hero-actions">
+                    <button class="btn-primary" onclick="openDailyPoem()" data-i18n="btn_daily_poem">Read Poem of the Day</button>
+                    <button class="btn-secondary" onclick="document.getElementById('poems').scrollIntoView({behavior: 'smooth'})" data-i18n="hero_explore">Explore Poems</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="container" id="poems">
+            <h2 class="section-title" data-i18n="section_recent">Recent Verses</h2>
+            <div class="poems-grid" id="poemsGrid"></div>
+        </section>
+
+        <section class="container" id="poets">
+            <h2 class="section-title" data-i18n="section_poets">Our Poets</h2>
+            <div class="poets-grid" id="poetsGrid"></div>
+        </section>
+
+        <footer><p data-i18n="footer_quote">"Poetry is when an emotion has found its thought and the thought has found words." — Robert Frost</p></footer>
+    </div>
+
+    <div class="modal" id="viewPoemModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeViewPoemModal()">&times;</button>
+            
+            <div id="poem-capture-area">
+                <div id="viewPoemHeader">
+                    <h2 class="section-title" id="viewPoemTitle"></h2>
+                    <div id="viewMoodTag" class="mood-tag" style="margin: 0 auto 1rem; display:block; text-align:center; width:fit-content;"></div>
+                </div>
+                <p class="poem-author" id="viewPoemAuthor" style="text-align: center;"></p>
+                <div class="poem-full" id="viewPoemContent"></div>
+            </div>
+
+            <div id="viewPoemAudioContainer" class="audio-player-container" style="display:none;"><p style="font-size:0.8rem; color:var(--accent-gold); margin-bottom:0.5rem;">🎧 Spoken Word</p><audio id="viewPoemAudio" controls></audio></div>
+            
+            <div class="action-btn-group">
+                <button class="snap-btn" id="viewPoemSnapBtn" onclick="snapCurrentPoem(event)">🤌 <span data-i18n="btn_snap">Snap</span> <span id="viewPoemSnapCount">0</span></button>
+                <button class="share-btn" onclick="saveAsImage()"><i class="fas fa-image"></i> <span data-i18n="btn_save_img">Save Image</span></button>
+                <button class="share-btn" id="viewPoemShareBtn" onclick="shareCurrentPoem()"><i class="fas fa-share-alt"></i> <span data-i18n="btn_share">Share Link</span></button>
+            </div>
+            <div class="poem-meta"><span id="viewPoemDate"></span></div>
+        </div>
+    </div>
+
+    <div class="modal" id="viewPoetModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('viewPoetModal')">&times;</button>
+            <h2 class="section-title" id="viewPoetName"></h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;" id="viewPoetBio"></p>
+            <h3 style="font-family: 'Cormorant Garamond', serif; color: var(--accent-warm); margin-bottom: 1.5rem;" data-i18n="label_poems">Poems</h3>
+            <div id="viewPoetPoems" class="poet-poems-list"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="submitModal">
+        <div class="modal-content" style="padding: 0; height: 80vh; max-width: 800px; overflow: hidden; background: #fff;">
+            <button class="modal-close" onclick="closeModal('submitModal')" style="color: #333; z-index: 999;">&times;</button>
+            
+            <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSeICxnGjTmozQpRqVM_s4tDn_MYBuCwRsNW1iIuW63F-L3YcA/viewform?usp=header" width="100%" height="100%" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
+        
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Link Copied!</div>
+
+    <script>
+        // --- TRANSLATION ---
+        const translations = {
+            en: {
+                logo: "The Poetry Collective", nav_poems: "Poems", nav_poets: "Poets", nav_submit: "Submit Poem", nav_surprise: "Surprise Me", hero_title: "Where Words Find Wings", hero_subtitle: "A sanctuary for poets to share, discover, and celebrate the art of verse", hero_explore: "Explore Poems", btn_daily_poem: "Read Poem of the Day", section_recent: "Recent Verses", section_poets: "Our Poets", footer_quote: "\"Poetry is when an emotion has found its thought and the thought has found words.\" — Robert Frost", btn_snap: "Snap", btn_share: "Share Link", btn_save_img: "Save Image", label_poems: "Poems", by: "by", poems_count: "poems", toast_copied: "Poem link copied to clipboard!", toast_img_saved: "Image saved!"
+            },
+            np: {
+                logo: "आरोह जिन्दगीको", nav_poems: "कविताहरू", nav_poets: "कविहरू", nav_submit: "कविता पठाउनुहोस्", nav_surprise: "अचम्मित पार्नुहोस्", hero_title: "शब्दहरूले पखेटा पाउने ठाउँ", hero_subtitle: "कविताको कला बाँड्न, खोज्न र उत्सव मनाउन कविहरूको लागि एक मन्दिर", hero_explore: "कविताहरू हेर्नुहोस्", btn_daily_poem: "आजको कविता", section_recent: "हालैका रचनाहरू", section_poets: "हाम्रा कविहरू", footer_quote: "\"कविता तब बन्छ जब भावनाले विचार पाउँछ र विचारले शब्द पाउँछ।\" — रोबर्ट फ्रस्ट", btn_snap: "वाह!", btn_share: "लिङ्क साझा", btn_save_img: "तस्बिर सेभ", label_poems: "रचनाहरू", by: "लेखक:", poems_count: "रचनाहरू", toast_copied: "कविता कपी गरियो!", toast_img_saved: "तस्बिर सेभ भयो!"
+            }
+        };
+
+        let currentLang = localStorage.getItem('lang') || 'en';
+        function updateLanguageUI() {
+            document.documentElement.lang = currentLang;
+            document.body.className = currentLang === 'np' ? 'lang-np' : 'lang-en';
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if(translations[currentLang][key]) el.textContent = translations[currentLang][key];
+            });
+            document.getElementById('langFlag').textContent = currentLang === 'en' ? '🇳🇵' : '🇺🇸';
+        }
+        function toggleLanguage() { currentLang = currentLang === 'en' ? 'np' : 'en'; localStorage.setItem('lang', currentLang); updateLanguageUI(); loadPoets(); loadPoems(); }
+
+        // --- OBSERVER ---
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    document.querySelectorAll('.nav-links a').forEach(link => link.classList.remove('active'));
+                    const id = entry.target.getAttribute('id');
+                    const link = document.querySelector(`.nav-links a[href="#${id}"]`);
+                    if(link) link.classList.add('active');
+                }
+            });
+        }, { root: null, rootMargin: '-10% 0px -70% 0px', threshold: 0 });
+        document.querySelectorAll('section[id]').forEach(section => observer.observe(section));
+
+        // --- PARTICLES ---
+        const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+        let particles = [], currentMoodColor = '212, 165, 116';
+        const moodColors = { 'melancholic': '74, 111, 165', 'fiery': '230, 57, 70', 'serene': '42, 157, 143', 'ethereal': '155, 93, 229', 'dark': '52, 58, 64' };
+        function setMood(moodName) { currentMoodColor = moodColors[moodName] || '212, 165, 116'; particles.forEach(p => p.color = currentMoodColor); }
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+        class Particle {
+            constructor() { this.reset(); }
+            reset() { this.x = Math.random() * canvas.width; this.y = Math.random() * canvas.height; this.vx = (Math.random() - 0.5) * 0.5; this.vy = (Math.random() - 0.5) * 0.5; this.size = Math.random() * 2 + 1; this.opacity = Math.random() * 0.5 + 0.2; this.color = currentMoodColor; }
+            update() { this.x += this.vx; this.y += this.vy; if (this.x < 0 || this.x > canvas.width) this.vx *= -1; if (this.y < 0 || this.y > canvas.height) this.vy *= -1; }
+            draw() { ctx.fillStyle = `rgba(${this.color}, ${this.opacity})`; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); }
+        }
+        particles = Array.from({ length: window.innerWidth < 768 ? 25 : 50 }, () => new Particle());
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); particles.forEach(p => { p.update(); p.draw(); });
+            particles.forEach((p1, i) => { particles.slice(i + 1).forEach(p2 => { const d = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); if (d < 150) { ctx.strokeStyle = `rgba(${p1.color}, ${0.1 * (1 - d/150)})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); } }); });
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // --- APP LOGIC ---
+        let currentViewingPoemId = null;
+
+        function initializeSampleData() {
+            const existingPoets = JSON.parse(localStorage.getItem('poets') || '[]');
+            if (existingPoets.length < 3) { localStorage.removeItem('poets'); localStorage.removeItem('poems'); }
+
+            if (!localStorage.getItem('poets')) {
+                const samplePoets = [
+                    { id: 1, name: 'Arjun Sharma', bio: 'Seeking silence in the noise of Kathmandu.' },
+                    { id: 2, name: 'Sarah Jenkins', bio: 'An expat finding home in the hills.' },
+                    { id: 3, name: 'Riya Gurung', bio: 'Tea lover, dream weaver.' },
+                    { id: 4, name: 'Aarav Thapa', bio: 'Modernist poet exploring digital chaos.' },
+                    { id: 5, name: 'Luna Shrestha', bio: 'Stargazer. Whispering to the universe.' }
+                ];
+                localStorage.setItem('poets', JSON.stringify(samplePoets));
+            }
+
+            if (!localStorage.getItem('poems')) {
+                const samplePoems = [
+                    { id: 101, title: 'Mountain Echoes', content: 'The Himalayas do not speak,\nThey only listen to the wind.\nIn their silence, I find the words\nI have been too afraid to say.', authorId: 1, authorName: 'Arjun Sharma', date: new Date().toISOString(), mood: 'serene', snaps: 12 },
+                    { id: 102, title: 'काठमाण्डौको धुलो (Dust of Kathmandu)', content: 'धुलोको बादल भित्र,\nसपनाहरु हराउछन्,\nफेरि साँझ पर्छ,\nअनि ताराहरु उदाउछन्।', authorId: 1, authorName: 'Arjun Sharma', date: new Date().toISOString(), mood: 'melancholic', snaps: 34 },
+                    { id: 103, title: 'Chai at Dawn', content: 'Steam rises like a prayer,\nGlass touches lip,\nThe world wakes up slowly,\nOne sip at a time.', authorId: 1, authorName: 'Arjun Sharma', date: new Date().toISOString(), mood: 'serene', snaps: 8 },
+                    { id: 201, title: 'Monsoon Rain', content: 'It falls not like water,\nBut like memory.\nWashing away the dust,\nRevealing the green underneath.', authorId: 2, authorName: 'Sarah Jenkins', date: new Date().toISOString(), mood: 'melancholic', snaps: 22 },
+                    { id: 202, title: 'Lost in Thamel', content: 'Colors blur, sounds collide,\nA labyrinth of senses,\nWhere I lost myself,\nAnd found a poem.', authorId: 2, authorName: 'Sarah Jenkins', date: new Date().toISOString(), mood: 'fiery', snaps: 15 },
+                    { id: 203, title: 'Distance', content: 'Miles are just numbers,\nUntil you count them in heartbeats.\nThe phone screen glows,\nBut your voice feels cold.', authorId: 2, authorName: 'Sarah Jenkins', date: new Date().toISOString(), mood: 'dark', snaps: 5 },
+                    { id: 301, title: 'सपना (Dream)', content: 'राति देखेको सपना,\nबिहानै बिलायो,\nतर त्यो मीठो आभास,\nदिनभरि रहिरह्यो।', authorId: 3, authorName: 'Riya Gurung', date: new Date().toISOString(), mood: 'ethereal', snaps: 40 },
+                    { id: 302, title: 'Old House', content: 'The wood creaks with history,\nEvery nail a story,\nEvery window an eye,\nWatching generations pass by.', authorId: 3, authorName: 'Riya Gurung', date: new Date().toISOString(), mood: 'dark', snaps: 10 },
+                    { id: 303, title: 'Golden Hour', content: 'The sun kisses the peaks goodbye,\nA fleeting moment of gold,\nBefore the night takes hold.', authorId: 3, authorName: 'Riya Gurung', date: new Date().toISOString(), mood: 'serene', snaps: 18 },
+                    { id: 401, title: 'Digital Ghost', content: 'We are signals in the air,\nZeros and ones pretending to care.\nSwipe left, swipe right,\nLonely ghosts in the digital night.', authorId: 4, authorName: 'Aarav Thapa', date: new Date().toISOString(), mood: 'dark', snaps: 55 },
+                    { id: 402, title: 'यन्त्र मानव (Machine Human)', content: 'हामी हिड्छौँ,\nतर पुग्दैनौँ,\nहामी बोल्छौँ,\nतर सुन्दैनौँ।', authorId: 4, authorName: 'Aarav Thapa', date: new Date().toISOString(), mood: 'fiery', snaps: 28 },
+                    { id: 403, title: 'Glitch', content: 'A stutter in the matrix,\nA pause in the breath,\nDid you see it too?\nThe crack in the sky.', authorId: 4, authorName: 'Aarav Thapa', date: new Date().toISOString(), mood: 'ethereal', snaps: 12 },
+                    { id: 501, title: 'Stardust', content: 'We are made of burning stars,\nCollapsed gravity and light.\nSo why do we feel so heavy?', authorId: 5, authorName: 'Luna Shrestha', date: new Date().toISOString(), mood: 'ethereal', snaps: 60 },
+                    { id: 502, title: 'जून (Moon)', content: 'एक्लै छ जून,\nतर कहिल्यै उदास छैन,\nकिनकि उसलाई थाहा छ,\nअँध्यारो नै उसको साथी हो।', authorId: 5, authorName: 'Luna Shrestha', date: new Date().toISOString(), mood: 'melancholic', snaps: 42 },
+                    { id: 503, title: 'Orbit', content: 'Round and round we go,\nCircles of habit,\nCircles of love,\nUntil gravity lets go.', authorId: 5, authorName: 'Luna Shrestha', date: new Date().toISOString(), mood: 'serene', snaps: 9 }
+                ];
+                localStorage.setItem('poems', JSON.stringify(samplePoems));
+            }
+        }
+        initializeSampleData();
+
+        const getPoets = () => JSON.parse(localStorage.getItem('poets') || '[]');
+        const getPoems = () => JSON.parse(localStorage.getItem('poems') || '[]');
+        const savePoems = (p) => localStorage.setItem('poems', JSON.stringify(p));
+        const isNepali = (t) => /[\u0900-\u097F]/.test(t);
+
+        function loadPoems() {
+            const grid = document.getElementById('poemsGrid'), byText = translations[currentLang]['by'];
+            grid.innerHTML = getPoems().slice(0, 12).map(p => {
+                const img = p.image ? `<img src="${p.image}" class="poem-cover-img">` : '';
+                return `<div class="poem-card" onclick="viewPoem(${p.id})">${img}<div class="poem-card-content"><span class="mood-tag">${p.mood||'General'}</span><h3 class="poem-title ${isNepali(p.title)?'nepali-heading':''}">${p.title}</h3><p class="poem-author">${byText} ${p.authorName}</p><p class="poem-excerpt ${isNepali(p.content)?'nepali-text':''}">${p.content.split('\n').slice(0,3).join('\n')}...</p><div class="poem-meta"><span>${new Date(p.date).toLocaleDateString()}</span><button class="snap-btn" onclick="event.stopPropagation(); snap(event, ${p.id})">🤌 ${p.snaps||0}</button></div></div></div>`;
+            }).join('');
+        }
+
+        function loadPoets() {
+            const grid = document.getElementById('poetsGrid'), images = [
+                'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=400',
+                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+                'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
+                'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400',
+                'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400'
+            ];
+            grid.innerHTML = getPoets().map((p, i) => {
+                const c = getPoems().filter(x => x.authorId === p.id).length;
+                return `<div class="poet-card" onclick="viewPoet(${p.id})"><div class="poet-img-box"><img src="${images[i%images.length]}" class="poet-img"></div><div class="poet-info"><span class="poet-role">Poet</span><h3 class="poet-name">${p.name}</h3><p class="poet-bio">${p.bio}</p><span class="poet-poems-count">${c} ${translations[currentLang].poems_count}</span></div></div>`;
+            }).join('');
+        }
+
+        // --- SURPRISE ME LOGIC ---
+        function surpriseMe() {
+            createBurst(window.innerWidth/2, window.innerHeight/2);
+            const ps = getPoems();
+            if(ps.length > 0) {
+                const r = Math.floor(Math.random() * ps.length);
+                viewPoem(ps[r].id);
+            }
+        }
+
+        // --- POEM OF THE DAY LOGIC ---
+        function openDailyPoem() {
+            const ps = getPoems();
+            if(ps.length === 0) return;
+            
+            // Generate a seed from today's date string (YYYY-MM-DD)
+            const today = new Date().toISOString().split('T')[0];
+            let hash = 0;
+            for (let i = 0; i < today.length; i++) {
+                hash = today.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            // Use positive hash to pick index
+            const index = Math.abs(hash) % ps.length;
+            
+            viewPoem(ps[index].id);
+        }
+
+        // --- SHARE AS IMAGE LOGIC ---
+        function saveAsImage() {
+            const element = document.getElementById("poem-capture-area");
+            
+            // Show toast
+            const x = document.getElementById('toast');
+            x.textContent = "Generating image...";
+            x.className = "toast show";
+
+            html2canvas(element, {
+                backgroundColor: "#2d2419", // Force the secondary dark color so it's not transparent/black
+                scale: 2, // Better resolution
+                logging: false,
+                useCORS: true // Attempt to handle external images if any
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `poem-${new Date().getTime()}.png`;
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+                
+                x.textContent = translations[currentLang].toast_img_saved;
+                setTimeout(()=>x.className=x.className.replace("show",""), 3000);
+            }).catch(err => {
+                console.error(err);
+                x.textContent = "Error saving image.";
+            });
+        }
+
+        // --- POEM VIEW LOGIC ---
+        function viewPoem(id) {
+            closeModal('viewPoetModal'); currentViewingPoemId = id;
+            const p = getPoems().find(x => x.id === id);
+            if(p) {
+                setMood(p.mood||'default'); document.body.style.background = `rgba(${currentMoodColor},0.05)`;
+                const t=document.getElementById('viewPoemTitle'), c=document.getElementById('viewPoemContent');
+                t.textContent=p.title; t.className="section-title "+(isNepali(p.title)?'nepali-heading':'');
+                c.textContent=p.content; c.className="poem-full "+(isNepali(p.content)?'nepali-text':'');
+                document.getElementById('viewPoemAuthor').textContent=`${translations[currentLang].by} ${p.authorName}`;
+                document.getElementById('viewPoemDate').textContent=new Date(p.date).toLocaleDateString();
+                document.getElementById('viewMoodTag').textContent=(p.mood||'').toUpperCase();
+                const ac=document.getElementById('viewPoemAudioContainer'), ap=document.getElementById('viewPoemAudio');
+                if(p.audio) { ac.style.display='block'; ap.src=p.audio; } else { ac.style.display='none'; ap.pause(); }
+                document.getElementById('viewPoemSnapCount').textContent=p.snaps||0;
+
+                openModal('viewPoemModal');
+            }
+        }
+
+        // --- MISC ---
+        function viewPoet(id) { const p=getPoets().find(x=>x.id===id); if(p){ document.getElementById('viewPoetName').textContent=p.name; document.getElementById('viewPoetBio').textContent=p.bio; const pl=getPoems().filter(x=>x.authorId===id); document.getElementById('viewPoetPoems').innerHTML=pl.length?pl.map((x,i)=>`<div class="poet-poem-list-item" onclick="viewPoem(${x.id})"><span class="stylish-number">${i+1<10?'0':''}${i+1}</span><div class="list-poem-details"><h4 class="${isNepali(x.title)?'nepali-heading':''}">${x.title}</h4><p class="${isNepali(x.content)?'nepali-text':''}">${x.content.split('\n')[0]}...</p></div></div>`).join(''):'<p style="color:var(--text-secondary);padding:1rem;">No poems</p>'; openModal('viewPoetModal'); } }
+        function snap(e,id) { createBurst(e.clientX, e.clientY); const ps=getPoems(), i=ps.findIndex(x=>x.id===id); if(i>-1){ ps[i].snaps=(ps[i].snaps||0)+1; savePoems(ps); loadPoems(); } }
+        function snapCurrentPoem(e) { createBurst(e.clientX, e.clientY); const ps=getPoems(), i=ps.findIndex(x=>x.id===currentViewingPoemId); if(i>-1){ ps[i].snaps=(ps[i].snaps||0)+1; savePoems(ps); document.getElementById('viewPoemSnapCount').textContent=ps[i].snaps; } }
+        function shareCurrentPoem() { const p=getPoems().find(x=>x.id===currentViewingPoemId), t=`Read "${p.title}" by ${p.authorName}.\n\n${p.content.substring(0,50)}...`; if(navigator.share) navigator.share({title:p.title,text:t,url:window.location.href}); else navigator.clipboard.writeText(t).then(()=>{const x=document.getElementById('toast');x.textContent=translations[currentLang].toast_copied;x.className="toast show";setTimeout(()=>x.className=x.className.replace("show",""),3000)}); }
+        function createBurst(x,y) { for(let i=0;i<12;i++){ const el=document.createElement('div'); el.classList.add('click-burst'); el.style.left=x+'px'; el.style.top=y+'px'; el.style.width='6px'; el.style.height='6px'; el.style.background='var(--accent-gold)'; el.style.borderRadius='50%'; const a=Math.random()*Math.PI*2, v=Math.random()*60+20; el.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(a)*v}px,${Math.sin(a)*v}px) scale(0)`,opacity:0}],{duration:600,easing:'ease-out'}).onfinish=()=>el.remove(); document.body.appendChild(el); } }
+        
+        // Helper to open/close modal with locking scroll
+        function openModal(id) { document.getElementById(id).classList.add('active'); document.body.classList.add('modal-open'); }
+        function closeModal(id) { 
+            const m = document.getElementById(id);
+            if(m) m.classList.remove('active');
+            if(document.querySelectorAll('.modal.active').length === 0) {
+                document.body.classList.remove('modal-open');
+                setMood('default');
+            }
+            if(id === 'viewPoemModal') { document.getElementById('viewPoemAudio').pause(); document.body.style.background = 'var(--background)'; }
+        }
+        function closeViewPoemModal() { closeModal('viewPoemModal'); }
+
+        document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if(e.target===m) closeModal(m.id); }));
+
+        updateLanguageUI(); loadPoems(); loadPoets();
+    </script>
+</body>
+</html>
